@@ -56,7 +56,7 @@ async def upload(file: UploadFile = File(...)):
 
     chunks = doc_parser.chunk_text(text)
     if not chunks:
-        raise HTTPException(400, "文档无可提取文字(PDF 可能是扫描件)")
+        raise HTTPException(400, "扫描件/图片型 PDF 无法提取文字(需 OCR,暂不支持)")
 
     embeddings = embed_service.embed(chunks)
     return db.add_doc(name, chunks, embeddings)
@@ -76,8 +76,12 @@ async def chat(payload: dict):
         raise HTTPException(400, "知识库为空,请先上传文档")
 
     query_emb = embed_service.embed_one(question)
-    top = embed_service.search(query_emb, chunks, config.TOP_K)
-    context = "\n\n".join(f"[{i + 1}] {t}" for i, (_, t) in enumerate(top))
+    top = embed_service.search(query_emb, question, chunks, config.TOP_K)
+    sources = [
+        {"doc_name": s["doc_name"], "score": round(s["hybrid"], 3), "text": s["text"][:150]}
+        for s in top
+    ]
+    context = "\n\n".join(f"[{i + 1}] {s['text']}" for i, s in enumerate(top))
     messages = [
         {
             "role": "system",
@@ -87,6 +91,8 @@ async def chat(payload: dict):
     ]
 
     async def gen():
+        # 先推引用来源,再逐字推正文
+        yield f"data: {json.dumps({'sources': sources}, ensure_ascii=False)}\n\n"
         async with httpx.AsyncClient(
             base_url="https://open.bigmodel.cn/api/paas/v4",
             headers={"Authorization": f"Bearer {config.ZHIPU_API_KEY}"},

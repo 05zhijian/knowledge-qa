@@ -13,7 +13,24 @@
 				class="row"
 				:class="m.role"
 			>
-				<view class="bubble">{{ m.content || (m.role === 'assistant' ? '…' : '') }}</view>
+				<view class="col">
+					<view class="bubble">{{ m.content || (m.role === 'assistant' ? '…' : '') }}</view>
+					<view
+						v-if="m.role === 'assistant' && m.sources && m.sources.length"
+						class="sources"
+						@click="toggle(i)"
+					>
+						<view class="sources-title">
+							来源 {{ m.sources.length }} 条{{ expanded.includes(i) ? ' ▾' : ' ▸' }}
+						</view>
+						<view v-if="expanded.includes(i)">
+							<view v-for="(src, si) in m.sources" :key="si" class="src-item">
+								<view class="src-name">{{ src.doc_name }} · 相关度 {{ src.score }}</view>
+								<view class="src-text">{{ src.text }}</view>
+							</view>
+						</view>
+					</view>
+				</view>
 			</view>
 		</scroll-view>
 
@@ -39,11 +56,20 @@ const chatStore = useChatStore()
 const docId = ref('')
 const text = ref('')
 const scrollInto = ref('')
+const expanded = ref([])
 
 onLoad((q) => {
 	docId.value = q.docId
 	if (q.name) uni.setNavigationBarTitle({ title: decodeURIComponent(q.name) })
 })
+
+function toggle(i) {
+	if (expanded.value.includes(i)) {
+		expanded.value = expanded.value.filter((x) => x !== i)
+	} else {
+		expanded.value = [...expanded.value, i]
+	}
+}
 
 function send() {
 	const t = text.value.trim()
@@ -83,8 +109,21 @@ function send() {
 	justify-content: flex-start;
 }
 
-.bubble {
+.col {
+	display: flex;
+	flex-direction: column;
 	max-width: 80%;
+}
+
+.row.user .col {
+	align-items: flex-end;
+}
+
+.row.assistant .col {
+	align-items: flex-start;
+}
+
+.bubble {
 	padding: 16rpx 20rpx;
 	border-radius: 12rpx;
 	font-size: 28rpx;
@@ -101,6 +140,40 @@ function send() {
 .row.assistant .bubble {
 	background: #f2f2f2;
 	color: #333;
+}
+
+.sources {
+	margin-top: 12rpx;
+	padding: 12rpx 16rpx;
+	background: #fff;
+	border: 1rpx solid #eee;
+	border-radius: 10rpx;
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.sources-title {
+	font-size: 24rpx;
+	color: #2f9e6e;
+}
+
+.src-item {
+	margin-top: 10rpx;
+}
+
+.src-name {
+	font-size: 22rpx;
+	color: #999;
+}
+
+.src-text {
+	font-size: 24rpx;
+	color: #666;
+	margin-top: 4rpx;
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 3;
+	overflow: hidden;
 }
 
 .inputbar {
