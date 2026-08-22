@@ -1,0 +1,14 @@
+# node
+app/node_modules/
+app/dist/
+app/unpackage/
+
+# python
+server/.venv/
+server/__pycache__/
+server/data/
+server/.env
+
+# misc
+.DS_Store
+*.log
