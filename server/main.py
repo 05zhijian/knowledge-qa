@@ -69,6 +69,12 @@ async def chat(payload: dict):
     if not question:
         raise HTTPException(400, "问题为空")
 
+    # 前端 URL 参数是字符串,统一转 int,兼容字符串/数字两种来源
+    try:
+        doc_id = int(doc_id) if doc_id else None
+    except (TypeError, ValueError):
+        doc_id = None
+
     chunks = db.load_chunks()
     if doc_id:
         chunks = [c for c in chunks if c[0] == doc_id]

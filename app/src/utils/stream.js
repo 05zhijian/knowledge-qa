@@ -26,7 +26,13 @@ async function fetchStream(url, body, handlers) {
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(body),
 		})
-		if (!res.ok) throw new Error('HTTP ' + res.status)
+		if (!res.ok) {
+			let detail = ''
+			try {
+				detail = (await res.json()).detail || ''
+			} catch { /* 非 JSON 响应体 */ }
+			throw new Error('HTTP ' + res.status + (detail ? ': ' + detail : ''))
+		}
 		const reader = res.body.getReader()
 		const decoder = new TextDecoder()
 		let buf = ''
@@ -35,7 +41,7 @@ async function fetchStream(url, body, handlers) {
 			if (done) break
 			buf = parseBuffer(buf + decoder.decode(value, { stream: true }), onChunk)
 		}
-		onDone()
+		if (onDone) onDone()
 	} catch (e) {
 		onError(e)
 	}
@@ -54,7 +60,7 @@ function mpStream(url, body, handlers) {
 		data: body,
 		enableChunked: true,
 		fail: (err) => onError(err),
-		complete: () => onDone(),
+		complete: () => { if (onDone) onDone() },
 	})
 	task.onChunkReceived((res) => {
 		buf = parseBuffer(buf + decoder.decode(new Uint8Array(res.data), { stream: true }), onChunk)
@@ -66,9 +72,9 @@ function mpStream(url, body, handlers) {
 // 统一入口:{ onChunk(delta) onDone() onError(err) }
 export function streamJson(url, body, handlers) {
 	// #ifdef H5
-	fetchStream(url, body, handlers)
+	return fetchStream(url, body, handlers)
 	// #endif
 	// #ifdef MP-WEIXIN
-	mpStream(url, body, handlers)
+	return mpStream(url, body, handlers)
 	// #endif
 }

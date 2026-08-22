@@ -29,6 +29,10 @@ export function uploadFile(path, filePath, name = 'file') {
 			filePath,
 			name,
 			success: (res) => {
+				if (res.statusCode < 200 || res.statusCode >= 300) {
+					reject(new Error((res.data && res.data.detail) || ('HTTP ' + res.statusCode)))
+					return
+				}
 				try {
 					resolve(JSON.parse(res.data))
 				} catch {
