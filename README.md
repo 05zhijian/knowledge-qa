@@ -1,8 +1,8 @@
 # 知识库问答 (uni-app + FastAPI)
 
-多端 AI 知识库问答 demo:上传 PDF/txt/md → 服务端解析分块 → 向量化入库 → 基于文档语义问答(SSE 流式)。
+多端 AI 知识库问答 demo:上传 PDF/txt/md → 服务端解析分块 → 向量化入库 → 基于文档混合检索问答(SSE 流式,引用来源溯源)。
 
-**特点:零框架自建 RAG 链路**——不用 LangChain/FastGPT,解析→分块→embedding→余弦检索→prompt→SSE 每段自己写,面试可逐行讲。
+**特点:零框架自建 RAG 链路**——不用 LangChain/FastGPT,解析→分块→embedding→混合检索→prompt→SSE 每段自己写,面试可逐行讲。
 
 ## 技术栈
 
@@ -11,7 +11,7 @@
 | 前端 | uni-app (Vue3 + Vite + Pinia),一套代码出 微信小程序 / H5 / App |
 | 后端 | Python FastAPI + PyMuPDF + SQLite |
 | AI | 智谱 embedding-2(向量) + GLM-4-Flash(流式问答) |
-| 检索 | SQLite 存 chunk+向量,余弦线性扫描(demo 量级够,可换 Chroma) |
+| 检索 | 混合检索:向量余弦 + SQLite FTS5 中文 trigram 关键词,加权融合重排(demo 量级够,可换 Chroma) |
 
 ## 目录结构
 
@@ -26,7 +26,7 @@ knowledge_qa_demo/
 └── server/     # FastAPI 后端
     ├── main.py          # 路由 + SSE
     ├── doc_parser.py    # 按格式分派解析 + 分块
-    ├── embed_service.py # 智谱 embedding + 余弦检索
+    ├── embed_service.py # 智谱 embedding + 混合检索(向量 + FTS5)
     ├── db.py            # SQLite(docs / chunks)
     └── config.py        # 环境变量
 ```
@@ -60,12 +60,12 @@ npm run dev:mp-weixin   # 用微信开发者工具打开 app/dist/dev/mp-weixin
 
 ## 数据流
 
-上传 → PyMuPDF 抽文字 → 500 字分块(50 重叠)→ 智谱 embedding → SQLite → 提问 embedding → 余弦 top3 → 拼 prompt → GLM 流式回答 → 前端逐字渲染
+上传 → PyMuPDF 抽文字 → 500 字分块(50 重叠)→ 智谱 embedding 入库 → 提问:embedding 向量检索 + FTS5 trigram 关键词,加权融合 top_k → 拼 prompt → GLM 流式回答(SSE 先推 sources 引用来源)→ 前端逐字渲染 + 命中片段折叠展示
 
 ## 迭代计划
 
 - [x] 骨架:前后端工程 + PDF/txt/md 上传 + SSE 流式问答
-- [ ] 答案引用来源(命中片段高亮)
-- [ ] 混合检索(FTS5 关键词 + 向量)
-- [ ] 扫码件 OCR(pdf 图片型)
-- [ ] 上 GitHub + 作品集
+- [x] 答案引用来源:SSE 先推 sources 事件,前端折叠展示文档名 + 相关度 + 命中片段
+- [x] 混合检索:FTS5 trigram 关键词 + 向量余弦加权融合重排
+- [x] 扫描件识别:图片型 PDF 自动检测并提示需 OCR(识别完成,OCR 转文字暂未接)
+- [x] 上 GitHub + 作品集(演示视频 + 单页卡片)
